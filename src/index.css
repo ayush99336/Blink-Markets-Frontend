@@ -1,114 +1,148 @@
 @import "tailwindcss";
 
 @theme {
-  /* Dark theme color palette - Neon/Cyber aesthetic for betting */
-  --color-background: oklch(0.12 0.02 260);
-  --color-foreground: oklch(0.98 0.01 260);
+  /* Dark premium color palette */
+  --color-background: oklch(0.11 0.015 270);
+  --color-background-secondary: oklch(0.14 0.015 270);
+  --color-background-tertiary: oklch(0.17 0.015 270);
+  --color-foreground: oklch(0.97 0.005 270);
+  --color-foreground-secondary: oklch(0.75 0.01 270);
+  --color-foreground-tertiary: oklch(0.55 0.015 270);
 
-  --color-card: oklch(0.16 0.02 260);
-  --color-card-foreground: oklch(0.98 0.01 260);
+  --color-card: oklch(0.15 0.015 270);
+  --color-card-foreground: oklch(0.97 0.005 270);
+  --color-card-hover: oklch(0.18 0.018 270);
 
-  --color-popover: oklch(0.14 0.02 260);
-  --color-popover-foreground: oklch(0.98 0.01 260);
+  --color-popover: oklch(0.13 0.015 270);
+  --color-popover-foreground: oklch(0.97 0.005 270);
 
-  --color-primary: oklch(0.75 0.18 145);
-  --color-primary-foreground: oklch(0.12 0.02 260);
+  --color-primary: oklch(0.70 0.19 155);
+  --color-primary-hover: oklch(0.75 0.20 155);
+  --color-primary-foreground: oklch(0.10 0.01 270);
 
-  --color-secondary: oklch(0.22 0.03 260);
-  --color-secondary-foreground: oklch(0.98 0.01 260);
+  --color-secondary: oklch(0.20 0.015 270);
+  --color-secondary-foreground: oklch(0.97 0.005 270);
 
-  --color-muted: oklch(0.22 0.02 260);
-  --color-muted-foreground: oklch(0.65 0.02 260);
+  --color-muted: oklch(0.22 0.012 270);
+  --color-muted-foreground: oklch(0.60 0.015 270);
 
-  --color-accent: oklch(0.28 0.04 260);
-  --color-accent-foreground: oklch(0.98 0.01 260);
+  --color-accent: oklch(0.25 0.02 270);
+  --color-accent-foreground: oklch(0.97 0.005 270);
 
-  --color-destructive: oklch(0.65 0.25 25);
-  --color-destructive-foreground: oklch(0.98 0.01 260);
+  --color-destructive: oklch(0.60 0.22 25);
 
-  /* Flash bet specific colors */
-  --color-flash-green: oklch(0.72 0.22 145);
-  --color-flash-red: oklch(0.65 0.25 25);
-  --color-flash-blue: oklch(0.65 0.2 250);
-  --color-flash-purple: oklch(0.6 0.25 300);
-  --color-flash-orange: oklch(0.7 0.2 50);
-  --color-flash-gold: oklch(0.8 0.15 85);
+  /* Semantic betting colors */
+  --color-success: oklch(0.70 0.18 155);
+  --color-success-bg: oklch(0.25 0.06 155);
+  --color-warning: oklch(0.78 0.16 70);
+  --color-warning-bg: oklch(0.28 0.06 70);
+  --color-danger: oklch(0.65 0.22 25);
+  --color-danger-bg: oklch(0.25 0.08 25);
+  --color-info: oklch(0.70 0.15 250);
+  --color-info-bg: oklch(0.25 0.06 250);
 
-  --color-border: oklch(0.28 0.02 260);
-  --color-input: oklch(0.22 0.02 260);
-  --color-ring: oklch(0.75 0.18 145);
+  /* Gradient accents */
+  --color-gradient-start: oklch(0.70 0.19 155);
+  --color-gradient-mid: oklch(0.65 0.20 200);
+  --color-gradient-end: oklch(0.60 0.22 280);
 
+  /* Option colors */
+  --color-option-a: oklch(0.72 0.18 155);
+  --color-option-a-bg: oklch(0.22 0.05 155);
+  --color-option-b: oklch(0.70 0.17 45);
+  --color-option-b-bg: oklch(0.22 0.05 45);
+
+  --color-border: oklch(0.24 0.015 270);
+  --color-border-hover: oklch(0.32 0.02 270);
+  --color-input: oklch(0.18 0.015 270);
+  --color-ring: oklch(0.70 0.19 155);
+
+  --radius-2xl: 1.25rem;
+  --radius-xl: 1rem;
   --radius-lg: 0.75rem;
   --radius-md: 0.5rem;
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
 
   /* Animations */
-  --animate-pulse-fast: pulse-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-countdown: countdown 1s ease-in-out infinite;
-  --animate-glow: glow 2s ease-in-out infinite;
-  --animate-flash: flash 0.5s ease-in-out;
+  --animate-pulse-soft: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-pulse-fast: pulse-fast 0.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
   --animate-slide-up: slide-up 0.3s ease-out;
-  --animate-shake: shake 0.5s ease-in-out;
+  --animate-slide-down: slide-down 0.2s ease-out;
+  --animate-scale-in: scale-in 0.2s ease-out;
+  --animate-shake: shake 0.4s ease-in-out;
+  --animate-glow: glow 2s ease-in-out infinite;
+  --animate-countdown-tick: countdown-tick 1s ease-in-out infinite;
+
+  @keyframes pulse-soft {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.7;
+    }
+  }
 
   @keyframes pulse-fast {
 
     0%,
     100% {
       opacity: 1;
-    }
-
-    50% {
-      opacity: 0.6;
-    }
-  }
-
-  @keyframes countdown {
-
-    0%,
-    100% {
       transform: scale(1);
     }
 
     50% {
-      transform: scale(1.05);
+      opacity: 0.8;
+      transform: scale(1.02);
     }
   }
 
-  @keyframes glow {
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
 
-    0%,
     100% {
-      box-shadow: 0 0 20px oklch(0.75 0.18 145 / 0.3),
-        0 0 40px oklch(0.75 0.18 145 / 0.1);
-    }
-
-    50% {
-      box-shadow: 0 0 30px oklch(0.75 0.18 145 / 0.5),
-        0 0 60px oklch(0.75 0.18 145 / 0.2);
-    }
-  }
-
-  @keyframes flash {
-
-    0%,
-    100% {
-      opacity: 1;
-    }
-
-    50% {
-      opacity: 0;
+      background-position: 200% 0;
     }
   }
 
   @keyframes slide-up {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(12px);
     }
 
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 
@@ -119,12 +153,48 @@
       transform: translateX(0);
     }
 
-    25% {
-      transform: translateX(-5px);
+    20% {
+      transform: translateX(-4px);
     }
 
-    75% {
-      transform: translateX(5px);
+    40% {
+      transform: translateX(4px);
+    }
+
+    60% {
+      transform: translateX(-4px);
+    }
+
+    80% {
+      transform: translateX(4px);
+    }
+  }
+
+  @keyframes glow {
+
+    0%,
+    100% {
+      filter: drop-shadow(0 0 8px oklch(0.70 0.19 155 / 0.4));
+    }
+
+    50% {
+      filter: drop-shadow(0 0 16px oklch(0.70 0.19 155 / 0.6));
+    }
+  }
+
+  @keyframes countdown-tick {
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    10% {
+      transform: scale(1.08);
+    }
+
+    30% {
+      transform: scale(1);
     }
   }
 }
@@ -133,78 +203,225 @@
   border-color: var(--color-border);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
+/* Typography */
+.font-display {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-background);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
 }
 
-/* Urgent countdown styles */
-.countdown-urgent {
-  animation: pulse-fast 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.countdown-critical {
-  animation: shake 0.3s ease-in-out infinite;
-}
-
-/* Gradient text */
+/* Gradient text utility */
 .gradient-text {
-  background: linear-gradient(135deg, var(--color-flash-green), var(--color-flash-blue));
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-mid), var(--color-gradient-end));
+  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+.gradient-text-animated {
+  background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-mid), var(--color-gradient-end), var(--color-gradient-start));
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease infinite;
+}
+
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
 /* Glass effect */
 .glass {
-  background: oklch(0.16 0.02 260 / 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid oklch(0.28 0.02 260 / 0.5);
+  background: oklch(0.15 0.015 270 / 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-/* Neon border effect */
-.neon-border {
+.glass-darker {
+  background: oklch(0.12 0.015 270 / 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(90deg,
+      var(--color-secondary) 0%,
+      var(--color-accent) 50%,
+      var(--color-secondary) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Progress bar styling */
+.progress-track {
+  background: var(--color-secondary);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-a {
+  background: linear-gradient(90deg, oklch(0.65 0.16 155), oklch(0.72 0.18 155));
+}
+
+.progress-bar-b {
+  background: linear-gradient(90deg, oklch(0.65 0.15 45), oklch(0.70 0.17 45));
+}
+
+/* Card hover effects */
+.card-interactive {
+  transition: all 0.2s ease;
+}
+
+.card-interactive:hover {
+  background-color: var(--color-card-hover);
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+}
+
+/* Outcome button states */
+.outcome-btn {
   position: relative;
+  transition: all 0.15s ease;
 }
 
-.neon-border::before {
+.outcome-btn::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: 0;
   border-radius: inherit;
-  padding: 2px;
-  background: linear-gradient(135deg, var(--color-flash-green), var(--color-flash-purple));
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0.7;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-/* Progress bar for countdown */
-.countdown-progress {
-  background: linear-gradient(90deg,
-      var(--color-flash-green) 0%,
-      var(--color-flash-orange) 50%,
-      var(--color-flash-red) 100%);
+.outcome-btn:hover::before {
+  opacity: 1;
+}
+
+.outcome-btn-a::before {
+  background: linear-gradient(135deg, oklch(0.72 0.18 155 / 0.1), transparent);
+}
+
+.outcome-btn-b::before {
+  background: linear-gradient(135deg, oklch(0.70 0.17 45 / 0.1), transparent);
+}
+
+.outcome-btn-a.selected {
+  background: var(--color-option-a-bg);
+  border-color: var(--color-option-a);
+  box-shadow: 0 0 24px oklch(0.72 0.18 155 / 0.2);
+}
+
+.outcome-btn-b.selected {
+  background: var(--color-option-b-bg);
+  border-color: var(--color-option-b);
+  box-shadow: 0 0 24px oklch(0.70 0.17 45 / 0.2);
+}
+
+/* Countdown states */
+.countdown-normal {
+  color: var(--color-success);
+}
+
+.countdown-warning {
+  color: var(--color-warning);
+  animation: pulse-soft 1s ease-in-out infinite;
+}
+
+.countdown-critical {
+  color: var(--color-danger);
+  animation: pulse-fast 0.5s ease-in-out infinite;
+}
+
+/* Live indicator */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+  animation: pulse-soft 1.5s ease-in-out infinite;
+}
+
+/* Stat card */
+.stat-card {
+  background: linear-gradient(135deg, var(--color-card) 0%, oklch(0.17 0.02 270) 100%);
+}
+
+/* Category pill */
+.category-pill {
+  transition: all 0.15s ease;
+}
+
+.category-pill:hover {
+  transform: translateY(-1px);
+}
+
+.category-pill.active {
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.3);
+}
+
+/* Betting action button */
+.bet-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.bet-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, oklch(1 0 0 / 0.1) 50%, transparent 100%);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+.bet-button:hover::after {
+  transform: translateX(100%);
+}
+
+/* Tooltip */
+.tooltip {
+  background: var(--color-popover);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 32px oklch(0 0 0 / 0.4);
 }
