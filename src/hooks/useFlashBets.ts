@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FlashBet, BetCategory } from '../types/bet';
+import { FlashBet } from '../types/bet';
 
 // Simulated flash bet generator for demo
 const SAMPLE_BETS: Omit<FlashBet, 'id' | 'createdAt' | 'expiresAt' | 'status'>[] = [

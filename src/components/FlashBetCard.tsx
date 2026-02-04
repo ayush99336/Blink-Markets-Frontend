@@ -19,7 +19,7 @@ export function FlashBetCard({ bet, onPlaceBet, isConnected }: FlashBetCardProps
     const [isPlacing, setIsPlacing] = useState(false);
 
     const duration = bet.expiresAt - bet.createdAt;
-    const { timeLeft, percentage, isUrgent, isCritical, isExpired, formattedTime } = useCountdown(
+    const { percentage, isUrgent, isCritical, isExpired, formattedTime } = useCountdown(
         bet.expiresAt,
         duration
     );
