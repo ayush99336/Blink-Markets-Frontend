@@ -4,12 +4,20 @@ import { StatsBar } from "./components/StatsBar";
 import { FlashBetCard } from "./components/FlashBetCard";
 import { CategoryTabs } from "./components/CategoryTabs";
 import { RecentBets } from "./components/RecentBets";
+import { BridgeModal, BridgeButton, useBridgeModal } from "./components/BridgeModal";
+import { ZKLoginButton } from "./components/ZKLoginButton";
 import { useFlashBets } from "./hooks/useFlashBets";
+import { useZKLogin } from "./hooks/useZKLogin";
 import { Zap, History, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
 import { BetCategory } from "./types/bet";
 
 function App() {
   const account = useCurrentAccount();
+  const bridgeModal = useBridgeModal();
+  const zkLogin = useZKLogin();
+
+  // User is connected if either wallet or zkLogin is active
+  const isUserConnected = !!account || zkLogin.isAuthenticated;
   const {
     activeBets,
     allActiveBets,
@@ -62,7 +70,10 @@ function App() {
             </span>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
+            {/* Bridge Button */}
+            <BridgeButton onClick={bridgeModal.open} className="hidden sm:flex" />
+
             <a
               href="#how-it-works"
               className="hidden md:flex items-center gap-1.5 text-sm text-foreground-secondary hover:text-[#4DA2FF] transition-colors duration-200"
@@ -70,7 +81,20 @@ function App() {
               How it works
               <ArrowRight size={14} />
             </a>
-            <ConnectButton />
+
+            {/* ZKLogin + Wallet Connect */}
+            <ZKLoginButton
+              onConnectWallet={() => {
+                // Trigger dapp-kit connect modal
+                const connectBtn = document.querySelector('[data-dapp-kit-connect-button]') as HTMLButtonElement;
+                connectBtn?.click();
+              }}
+            />
+
+            {/* Hidden connect button for programmatic access */}
+            <div className="hidden">
+              <ConnectButton />
+            </div>
           </div>
         </div>
       </header>
@@ -160,7 +184,7 @@ function App() {
                     <FlashBetCard
                       bet={bet}
                       onPlaceBet={placeBet}
-                      isConnected={!!account}
+                      isConnected={isUserConnected}
                     />
                   </div>
                 ))}
@@ -383,6 +407,9 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Bridge Modal */}
+      <BridgeModal isOpen={bridgeModal.isOpen} onClose={bridgeModal.close} />
     </div>
   );
 }
