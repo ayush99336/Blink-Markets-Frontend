@@ -9,10 +9,14 @@ import { CategoryTabs } from "./components/CategoryTabs";
 import { RecentBets } from "./components/RecentBets";
 import { BridgeModal, BridgeButton, useBridgeModal } from "./components/BridgeModal";
 import { useFlashBets } from "./hooks/useFlashBets";
-import { Zap, History, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
+import { Zap, History, Sparkles, ArrowRight, ExternalLink, Wallet } from "lucide-react";
 import { BetCategory } from "./types/bet";
+import { PositionsPanel } from "./components/PositionsPanel";
+import { isContractConfigured } from "./lib/constants";
+
 
 const MIST_PER_SUI = 1_000_000_000;
+const fromBase64 = (value: string) => Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 
 function App() {
   const dAppKit = useDAppKit();
@@ -71,6 +75,31 @@ function App() {
         throw new Error("Bet amount must be greater than 0.");
       }
 
+      const client = dAppKit.getClient();
+      const eventObject = await client.getObject({
+        objectId: targetEventId,
+        include: { json: true },
+      });
+      const eventJson = eventObject.object.json as Record<string, unknown> | null;
+      const eventStatus = Number(eventJson?.status ?? -1);
+      const bettingEnd = Number(eventJson?.betting_end_time ?? 0);
+      if (eventStatus !== 1) {
+        throw new Error("This event is not open for betting.");
+      }
+      if (Date.now() >= bettingEnd) {
+        throw new Error("This flash event already expired. Create/open a new event.");
+      }
+
+      const balance = await client.getBalance({
+        owner: connection.account.address,
+        coinType: "0x2::sui::SUI",
+      });
+      const totalBalance = BigInt(balance.balance.balance);
+      const reserveForGas = 50_000_000n; // 0.05 SUI safety margin for gas
+      if (totalBalance < amountInMist + reserveForGas) {
+        throw new Error("Insufficient testnet SUI balance for this bet + gas.");
+      }
+
       const tx = new Transaction();
       const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amountInMist)]);
       const [position] = tx.moveCall({
@@ -86,7 +115,23 @@ function App() {
       });
       tx.transferObjects([position], tx.pure.address(connection.account.address));
 
-      await dAppKit.signAndExecuteTransaction({ transaction: tx });
+      try {
+        await dAppKit.signAndExecuteTransaction({ transaction: tx });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes("does not support signing and executing transactions")) {
+          throw error;
+        }
+
+        // Fallback for wallets that support signTransaction but not signAndExecuteTransaction.
+        const signed = await dAppKit.signTransaction({ transaction: tx });
+        await client.executeTransaction({
+          transaction: fromBase64(signed.bytes),
+          signatures: [signed.signature],
+          include: { effects: true },
+        });
+      }
+
       placeBet(betId, choice, amount);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -95,7 +140,8 @@ function App() {
     }
   }, [allActiveBets, connection.account, dAppKit, eventId, isOnchainBetConfigured, marketId, packageId, placeBet, treasuryId]);
 
-  const placeBetLabel = isOnchainBetConfigured ? "On-chain betting enabled" : "Demo betting mode";
+  const placeBetLabel = isContractConfigured() ? "On-chain betting enabled" : "Demo betting mode";
+
 
   return (
     <div className="min-h-screen relative overflow-hidden" style={{ background: '#050B15' }}>
@@ -271,7 +317,19 @@ function App() {
           </div>
         </div>
 
+        {/* User Positions Section */}
+        {isUserConnected && (
+          <div className="mt-12">
+            <div className="flex items-center gap-2.5 mb-6">
+              <Wallet size={20} className="text-[#4DA2FF]" />
+              <h2 className="text-xl font-bold text-foreground">Your Positions</h2>
+            </div>
+            <PositionsPanel />
+          </div>
+        )}
+
         {/* How It Works Section */}
+
         <section id="how-it-works" className="mt-24 py-20 scroll-mt-20">
           <div className="text-center mb-14">
             <div
