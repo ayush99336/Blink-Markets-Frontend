@@ -37,12 +37,11 @@ const FULLNODE_URL = FULLNODE_URLS[SUI_NETWORK] || FULLNODE_URLS.testnet;
 // Salt service - In production, use a secure backend service (browser calls need a proxy to avoid CORS)
 const DEFAULT_SALT_SERVICE_URL = import.meta.env.DEV
     ? '/api/salt'
-    : 'https://salt.api.mystenlabs.com/get_salt';
+    : '/get_salt';
 const SALT_SERVICE_URL = import.meta.env.VITE_SALT_SERVICE_URL || DEFAULT_SALT_SERVICE_URL;
 
-// Proving service - Mysten Labs provides this (devnet uses prover-dev)
-const DEFAULT_PROVING_SERVICE_URL =
-    SUI_NETWORK === 'devnet' ? 'https://prover-dev.mystenlabs.com/v1' : 'https://prover.mystenlabs.com/v1';
+// Proving service - Use local backend proxy in dev; configure backend URL for production.
+const DEFAULT_PROVING_SERVICE_URL = import.meta.env.DEV ? '/api/prover' : '/v1';
 const PROVING_SERVICE_URL = import.meta.env.VITE_PROVING_SERVICE_URL || DEFAULT_PROVING_SERVICE_URL;
 
 // Storage keys

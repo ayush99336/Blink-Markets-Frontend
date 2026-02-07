@@ -12,6 +12,11 @@ export interface FlashBet {
     participants: number;
     status: 'active' | 'locked' | 'resolved';
     winner?: 'A' | 'B';
+    onchain?: {
+        eventId: string;
+        outcomeAIndex?: number;
+        outcomeBIndex?: number;
+    };
 }
 
 export interface BetOption {

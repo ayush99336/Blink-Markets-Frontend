@@ -6,15 +6,15 @@ import { Zap, Users, ChevronRight, Sparkles } from 'lucide-react';
 
 interface FlashBetCardProps {
     bet: FlashBet;
-    onPlaceBet: (betId: string, choice: 'A' | 'B', amount: number) => void;
+    onPlaceBet: (betId: string, choice: 'A' | 'B', amount: number) => Promise<void>;
     isConnected: boolean;
 }
 
-const BET_AMOUNTS = [10, 25, 50, 100];
+const BET_AMOUNTS = [0.01, 0.05, 0.1, 0.25];
 
 export function FlashBetCard({ bet, onPlaceBet, isConnected }: FlashBetCardProps) {
     const [selectedChoice, setSelectedChoice] = useState<'A' | 'B' | null>(null);
-    const [betAmount, setBetAmount] = useState<number>(25);
+    const [betAmount, setBetAmount] = useState<number>(0.05);
     const [isPlacing, setIsPlacing] = useState(false);
 
     const duration = bet.expiresAt - bet.createdAt;
@@ -27,10 +27,12 @@ export function FlashBetCard({ bet, onPlaceBet, isConnected }: FlashBetCardProps
         if (!selectedChoice || isExpired || !isConnected) return;
 
         setIsPlacing(true);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        onPlaceBet(bet.id, selectedChoice, betAmount);
-        setIsPlacing(false);
-        setSelectedChoice(null);
+        try {
+            await onPlaceBet(bet.id, selectedChoice, betAmount);
+            setSelectedChoice(null);
+        } finally {
+            setIsPlacing(false);
+        }
     };
 
     const category = CATEGORIES.find(c => c.id === bet.category);
