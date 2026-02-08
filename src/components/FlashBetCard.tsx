@@ -146,6 +146,45 @@ export function FlashBetCard({ bet, onPlaceBet, onOpenBet, isConnected }: FlashB
                             </button>
                         )}
                     </div>
+                ) : isExpired && !isCreated && bet.status === 'active' ? (
+                    <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-center">
+                        <p className="text-sm text-yellow-300 mb-3">Event expired. Waiting to be locked.</p>
+                        {onOpenBet && isConnected && (
+                            <button
+                                onClick={handleOpenBet} // Reusing handleOpenBet for Lock (will need prop adjust or new prop)
+                                disabled={isOpening}
+                                className={cn(
+                                    "w-full py-2 rounded-lg text-sm font-semibold transition-colors",
+                                    "bg-yellow-500 hover:bg-yellow-600 text-black",
+                                    "disabled:opacity-50 disabled:cursor-not-allowed"
+                                )}
+                            >
+                                {isOpening ? 'Locking...' : 'Lock Event'}
+                            </button>
+                        )}
+                    </div>
+                ) : bet.status === 'locked' ? (
+                     <div className="mb-6 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
+                        <p className="text-sm text-purple-300 mb-3">Event locked. Select winner to resolve.</p>
+                        {onOpenBet && isConnected && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => onOpenBet(bet.id + '-resolve-0')} // Hacky way to pass outcome
+                                    disabled={isOpening}
+                                    className="py-2 rounded-lg text-sm font-semibold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
+                                >
+                                    {bet.optionA.label} Wins
+                                </button>
+                                <button
+                                    onClick={() => onOpenBet(bet.id + '-resolve-1')}
+                                    disabled={isOpening}
+                                    className="py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
+                                >
+                                    {bet.optionB.label} Wins
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 ) : (
                 /* Outcome Buttons */
                 <div className="grid grid-cols-2 gap-3 mb-4">

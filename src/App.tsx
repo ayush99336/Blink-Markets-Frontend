@@ -150,49 +150,109 @@ function App() {
     try {
       if (!connection.account?.address) return;
       
-      const selectedBet = allActiveBets.find(b => b.id === betId);
+      // Parse action from betId (e.g. "bet-123-resolve-0")
+      let action = 'open';
+      let actualBetId = betId;
+      let outcomeIndex = 0;
+
+      if (betId.includes('-resolve-')) {
+        const parts = betId.split('-resolve-');
+        actualBetId = parts[0];
+        outcomeIndex = parseInt(parts[1]);
+        action = 'resolve';
+      } else if (betId.includes('-lock')) { // We can just use the same ID for lock if we want, or add suffix
+         // For now, let's assume if it is expired in UI, the button triggers this. 
+         // But wait, the UI passes `bet.id`. 
+         // To differentiate properly without changing props, let's rely on the button text/state or just check onchain status?
+         // Simpler: The UI component passed `bet.id` for Open/Lock (ambiguous) but `bet.id + '-resolve-X'` for resolve.
+         // Let's check the event status first and decide whether to Open or Lock.
+      }
+
+      const selectedBet = allActiveBets.find(b => b.id === actualBetId);
       const targetEventId = selectedBet?.onchain?.eventId;
       
       if (!targetEventId || !packageId || !marketId) {
-        throw new Error("Missing configuration for opening event");
+        throw new Error("Missing configuration for event");
       }
 
       const client = dAppKit.getClient();
       
-      // Find MarketCreatorCap
-      const ownedObjects = await client.getOwnedObjects({
-        owner: connection.account.address,
-        options: { showType: true }
+      // Fetch current event status to decide action (Open vs Lock)
+      const eventObject = await client.getObject({
+        id: targetEventId,
+        options: { showContent: true },
       });
+      const eventJson = eventObject.data?.content?.dataType === 'moveObject' 
+        ? (eventObject.data.content.fields as any) 
+        : null;
+      const eventStatus = Number(eventJson?.status ?? -1);
       
-      const capObject = ownedObjects.data.find(obj => {
-        const type = obj.data?.type;
-        return type && (
-          type.includes('::blink_config::MarketCreatorCap') || 
-          type.includes('::market::MarketCreatorCap') || 
-          type.includes('::blink_event::MarketCreatorCap')
-        );
-      });
+      // Prepare transaction
+      const tx = new Transaction();
 
-      if (!capObject?.data?.objectId) {
-         throw new Error("You need a MarketCreatorCap to open events.");
+      if (action === 'resolve') {
+         // Resolve Event
+         console.log(`Resolving event ${targetEventId} with outcome ${outcomeIndex}`);
+         
+         tx.moveCall({
+            target: `${packageId}::blink_event::resolve_event`,
+            arguments: [
+              tx.object(targetEventId),
+              tx.object(marketId),
+              tx.pure.u8(outcomeIndex),
+              tx.object("0x6"), // Clock
+            ]
+         });
+
+      } else {
+        // Find MarketCreatorCap
+        const ownedObjects = await client.getOwnedObjects({
+            owner: connection.account.address,
+            options: { showType: true }
+        });
+        
+        const capObject = ownedObjects.data.find(obj => {
+            const type = obj.data?.type;
+            return type && (
+            type.includes('::blink_config::MarketCreatorCap') || 
+            type.includes('::market::MarketCreatorCap') || 
+            type.includes('::blink_event::MarketCreatorCap')
+            );
+        });
+
+        if (!capObject?.data?.objectId) {
+            throw new Error("You need a MarketCreatorCap to manage events.");
+        }
+
+        if (eventStatus === 0) { // CREATED -> OPEN
+            console.log(`Opening event ${targetEventId}`);
+            tx.moveCall({
+                target: `${packageId}::blink_event::open_event`,
+                arguments: [
+                tx.object(capObject.data.objectId),
+                tx.object(targetEventId),
+                ]
+            });
+        } else if (eventStatus === 1) { // OPEN -> LOCKED
+             console.log(`Locking event ${targetEventId}`);
+             tx.moveCall({
+                target: `${packageId}::blink_event::lock_event`,
+                arguments: [
+                tx.object(capObject.data.objectId),
+                tx.object(targetEventId),
+                ]
+            });
+        } else {
+            throw new Error("Event is already locked or resolved.");
+        }
       }
 
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${packageId}::blink_event::open_event`,
-        arguments: [
-          tx.object(capObject.data.objectId),
-          tx.object(targetEventId),
-        ]
-      });
-
       await dAppKit.signAndExecuteTransaction({ transaction: tx });
-      window.alert("Event opened successfully! Betting is now live.");
+      window.alert(`Action completed successfully!`);
       
     } catch (e) {
-      console.error("Failed to open event:", e);
-      window.alert(`Failed to open event: ${e instanceof Error ? e.message : String(e)}`);
+      console.error("Failed to manage event:", e);
+      window.alert(`Failed to manage event: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, [allActiveBets, connection.account, dAppKit, marketId, packageId]);
 
@@ -239,6 +299,42 @@ function App() {
             >
               <Zap size={16} />
               Create Event
+            </button>
+            
+            {/* Oracle Registration Button (Admin Only) */}
+            <button
+                onClick={async () => {
+                    try {
+                        if (!connection.account?.address || !packageId || !marketId) return;
+                        const client = dAppKit.getClient();
+                        const ownedObjects = await client.getOwnedObjects({
+                            owner: connection.account.address,
+                            options: { showType: true }
+                        });
+                        const adminCap = ownedObjects.data.find(obj => obj.data?.type?.includes('::blink_config::AdminCap'));
+                        if (!adminCap?.data?.objectId) {
+                            alert("AdminCap not found. You cannot register oracles.");
+                            return;
+                        }
+                        const tx = new Transaction();
+                        tx.moveCall({
+                            target: `${packageId}::blink_config::add_oracle`,
+                            arguments: [
+                                tx.object(adminCap.data.objectId),
+                                tx.object(marketId),
+                                tx.pure.address(connection.account.address)
+                            ]
+                        });
+                        await dAppKit.signAndExecuteTransaction({ transaction: tx });
+                        alert("Successfully registered as Oracle!");
+                    } catch (e) {
+                         console.error(e);
+                         alert("Failed to register oracle: " + e);
+                    }
+                }}
+               className="hidden md:flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg text-sm text-purple-300 transition-colors"
+            >
+               Register Oracle
             </button>
 
             {/* Bridge Button */}
