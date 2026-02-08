@@ -1,23 +1,41 @@
-import { ConnectButton, useCurrentAccount } from "@mysten/dapp-kit-react";
+import { ConnectButton, useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
+import { useStore } from "@nanostores/react";
+import { useCallback, useState } from "react";
+import { Transaction } from "@mysten/sui/transactions";
 import { Hero } from "./components/Hero";
 import { StatsBar } from "./components/StatsBar";
 import { FlashBetCard } from "./components/FlashBetCard";
 import { CategoryTabs } from "./components/CategoryTabs";
 import { RecentBets } from "./components/RecentBets";
 import { BridgeModal, BridgeButton, useBridgeModal } from "./components/BridgeModal";
-import { ZKLoginButton } from "./components/ZKLoginButton";
 import { useFlashBets } from "./hooks/useFlashBets";
-import { useZKLogin } from "./hooks/useZKLogin";
-import { Zap, History, Sparkles, ArrowRight, ExternalLink } from "lucide-react";
+import { Zap, History, Sparkles, ArrowRight, ExternalLink, Wallet } from "lucide-react";
 import { BetCategory } from "./types/bet";
+import { PositionsPanel } from "./components/PositionsPanel";
+import { isContractConfigured } from "./lib/constants";
+
+
+import { CreateEventModal } from "./components/CreateEventModal";
+
+const MIST_PER_SUI = 1_000_000_000;
+const fromBase64 = (value: string) => Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+
 
 function App() {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const dAppKit = useDAppKit();
   const account = useCurrentAccount();
+  const connection = useStore(dAppKit.stores.$connection);
   const bridgeModal = useBridgeModal();
-  const zkLogin = useZKLogin();
+  const packageId = import.meta.env.VITE_BLINK_PACKAGE_ID as string | undefined;
+  const marketId = import.meta.env.VITE_BLINK_MARKET_ID as string | undefined;
+  const treasuryId = import.meta.env.VITE_BLINK_TREASURY_ID as string | undefined;
+  const eventId = import.meta.env.VITE_BLINK_EVENT_ID as string | undefined;
 
-  // User is connected if either wallet or zkLogin is active
-  const isUserConnected = !!account || zkLogin.isAuthenticated;
+  const activeAddress = account?.address ?? connection.account?.address;
+  const isUserConnected = connection.isConnected && !!activeAddress;
+  const isOnchainBetConfigured = Boolean(packageId && marketId && treasuryId && eventId);
+
   const {
     activeBets,
     allActiveBets,
@@ -37,6 +55,149 @@ function App() {
     acc[bet.category] = (acc[bet.category] || 0) + 1;
     return acc;
   }, {} as Record<BetCategory, number>);
+
+  const handlePlaceBet = useCallback(async (betId: string, choice: "A" | "B", amount: number) => {
+    try {
+      if (!isOnchainBetConfigured) {
+        placeBet(betId, choice, amount);
+        return;
+      }
+      if (!connection.account?.address) {
+        throw new Error("Connect a wallet before placing an on-chain bet.");
+      }
+
+      const selectedBet = allActiveBets.find((bet) => bet.id === betId);
+      const targetEventId = selectedBet?.onchain?.eventId || eventId;
+      if (!targetEventId) {
+        throw new Error("Missing event id for on-chain market.");
+      }
+
+      const outcomeIndex =
+        choice === "A" ? (selectedBet?.onchain?.outcomeAIndex ?? 0) : (selectedBet?.onchain?.outcomeBIndex ?? 1);
+      const amountInMist = BigInt(Math.round(amount * MIST_PER_SUI));
+      if (amountInMist <= 0n) {
+        throw new Error("Bet amount must be greater than 0.");
+      }
+
+      const client = dAppKit.getClient();
+      const eventObject = await client.getObject({
+        id: targetEventId,
+        options: { showContent: true },
+      });
+      const eventJson = eventObject.data?.content?.dataType === 'moveObject' 
+        ? (eventObject.data.content.fields as any) 
+        : null;
+      const eventStatus = Number(eventJson?.status ?? -1);
+      const bettingEnd = Number(eventJson?.betting_end_time ?? 0);
+      if (eventStatus !== 1) {
+        throw new Error("This event is not open for betting.");
+      }
+      if (Date.now() >= bettingEnd) {
+        throw new Error("This flash event already expired. Create/open a new event.");
+      }
+
+      const balance = await client.getBalance({
+        owner: connection.account.address,
+        coinType: "0x2::sui::SUI",
+      });
+      const totalBalance = BigInt(balance.totalBalance);
+      const reserveForGas = 50_000_000n; // 0.05 SUI safety margin for gas
+      if (totalBalance < amountInMist + reserveForGas) {
+        throw new Error("Insufficient testnet SUI balance for this bet + gas.");
+      }
+
+      const tx = new Transaction();
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amountInMist)]);
+      const [position] = tx.moveCall({
+        target: `${packageId}::blink_position::place_bet`,
+        arguments: [
+          tx.object(targetEventId),
+          tx.object(marketId!),
+          tx.object(treasuryId!),
+          tx.pure.u8(outcomeIndex),
+          coin,
+          tx.object("0x6"),
+        ],
+      });
+      tx.transferObjects([position], tx.pure.address(connection.account.address));
+
+      try {
+        await dAppKit.signAndExecuteTransaction({ transaction: tx });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes("does not support signing and executing transactions")) {
+          throw error;
+        }
+
+        // Fallback for wallets that support signTransaction but not signAndExecuteTransaction.
+        const signed = await dAppKit.signTransaction({ transaction: tx });
+        await client.executeTransactionBlock({
+          transactionBlock: fromBase64(signed.bytes),
+          signature: signed.signature,
+          options: { showEffects: true },
+        });
+      }
+
+      placeBet(betId, choice, amount);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("Place bet failed:", error);
+      window.alert(`Failed to place bet: ${message}`);
+    }
+  }, [allActiveBets, connection.account, dAppKit, eventId, isOnchainBetConfigured, marketId, packageId, placeBet, treasuryId]);
+
+  const handleOpenBet = useCallback(async (betId: string) => {
+    try {
+      if (!connection.account?.address) return;
+      
+      const selectedBet = allActiveBets.find(b => b.id === betId);
+      const targetEventId = selectedBet?.onchain?.eventId;
+      
+      if (!targetEventId || !packageId || !marketId) {
+        throw new Error("Missing configuration for opening event");
+      }
+
+      const client = dAppKit.getClient();
+      
+      // Find MarketCreatorCap
+      const ownedObjects = await client.getOwnedObjects({
+        owner: connection.account.address,
+        options: { showType: true }
+      });
+      
+      const capObject = ownedObjects.data.find(obj => {
+        const type = obj.data?.type;
+        return type && (
+          type.includes('::blink_config::MarketCreatorCap') || 
+          type.includes('::market::MarketCreatorCap') || 
+          type.includes('::blink_event::MarketCreatorCap')
+        );
+      });
+
+      if (!capObject?.data?.objectId) {
+         throw new Error("You need a MarketCreatorCap to open events.");
+      }
+
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${packageId}::blink_event::open_event`,
+        arguments: [
+          tx.object(capObject.data.objectId),
+          tx.object(targetEventId),
+        ]
+      });
+
+      await dAppKit.signAndExecuteTransaction({ transaction: tx });
+      window.alert("Event opened successfully! Betting is now live.");
+      
+    } catch (e) {
+      console.error("Failed to open event:", e);
+      window.alert(`Failed to open event: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [allActiveBets, connection.account, dAppKit, marketId, packageId]);
+
+  const placeBetLabel = isContractConfigured() ? "On-chain betting enabled" : "Demo betting mode";
+
 
   return (
     <div className="min-h-screen relative overflow-hidden" style={{ background: '#050B15' }}>
@@ -71,6 +232,15 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Create Event Button */}
+            <button
+               onClick={() => setIsCreateModalOpen(true)}
+               className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-slate-300 transition-colors"
+            >
+              <Zap size={16} />
+              Create Event
+            </button>
+
             {/* Bridge Button */}
             <BridgeButton onClick={bridgeModal.open} className="hidden sm:flex" />
 
@@ -82,19 +252,18 @@ function App() {
               <ArrowRight size={14} />
             </a>
 
-            {/* ZKLogin + Wallet Connect */}
-            <ZKLoginButton
-              onConnectWallet={() => {
-                // Trigger dapp-kit connect modal
-                const connectBtn = document.querySelector('[data-dapp-kit-connect-button]') as HTMLButtonElement;
-                connectBtn?.click();
-              }}
-            />
+            {isUserConnected && activeAddress && (
+              <div
+                className="hidden md:block px-3 py-2 rounded-lg text-xs font-mono"
+                style={{ background: "rgba(77, 162, 255, 0.12)", color: "#A8D0FF" }}
+              >
+                {`${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}`}
+              </div>
+            )}
 
-            {/* Hidden connect button for programmatic access */}
-            <div className="hidden">
-              <ConnectButton />
-            </div>
+            <div className="hidden lg:block text-xs text-foreground-tertiary">{placeBetLabel}</div>
+
+            <ConnectButton />
           </div>
         </div>
       </header>
@@ -181,9 +350,10 @@ function App() {
                     className="card-entrance"
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
-                    <FlashBetCard
+                        <FlashBetCard
                       bet={bet}
-                      onPlaceBet={placeBet}
+                      onPlaceBet={handlePlaceBet}
+                      onOpenBet={handleOpenBet}
                       isConnected={isUserConnected}
                     />
                   </div>
@@ -213,7 +383,19 @@ function App() {
           </div>
         </div>
 
+        {/* User Positions Section */}
+        {isUserConnected && (
+          <div className="mt-12">
+            <div className="flex items-center gap-2.5 mb-6">
+              <Wallet size={20} className="text-[#4DA2FF]" />
+              <h2 className="text-xl font-bold text-foreground">Your Positions</h2>
+            </div>
+            <PositionsPanel />
+          </div>
+        )}
+
         {/* How It Works Section */}
+
         <section id="how-it-works" className="mt-24 py-20 scroll-mt-20">
           <div className="text-center mb-14">
             <div
@@ -407,6 +589,12 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Create Event Modal */}
+      <CreateEventModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+      />
 
       {/* Bridge Modal */}
       <BridgeModal isOpen={bridgeModal.isOpen} onClose={bridgeModal.close} />

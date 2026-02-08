@@ -1,6 +1,6 @@
-import { LiFiWidget, type WidgetConfig } from '@lifi/widget';
+import type { WidgetConfig } from '@lifi/widget';
 import { X, ArrowRightLeft, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 
 interface BridgeModalProps {
     isOpen: boolean;
@@ -8,6 +8,33 @@ interface BridgeModalProps {
 }
 
 export function BridgeModal({ isOpen, onClose }: BridgeModalProps) {
+    const [LiFiWidgetComponent, setLiFiWidgetComponent] = useState<ComponentType<{
+        integrator: string;
+        config: WidgetConfig;
+    }> | null>(null);
+    const [widgetLoadError, setWidgetLoadError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        let isMounted = true;
+        import('@lifi/widget')
+            .then((module) => {
+                if (!isMounted) return;
+                setLiFiWidgetComponent(() => module.LiFiWidget);
+                setWidgetLoadError(null);
+            })
+            .catch((error: unknown) => {
+                if (!isMounted) return;
+                const message = error instanceof Error ? error.message : 'Unknown LI.FI widget error';
+                setWidgetLoadError(message);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     // LI.FI Widget configuration optimized for Sui
@@ -116,7 +143,24 @@ export function BridgeModal({ isOpen, onClose }: BridgeModalProps) {
 
                 {/* LI.FI Widget */}
                 <div className="lifi-widget-container">
-                    <LiFiWidget integrator="BlinkMarket" config={widgetConfig} />
+                    {widgetLoadError ? (
+                        <div
+                            className="rounded-xl p-4 text-sm"
+                            style={{
+                                background: 'rgba(255, 77, 106, 0.08)',
+                                border: '1px solid rgba(255, 77, 106, 0.2)',
+                                color: '#FF9AA9',
+                            }}
+                        >
+                            Failed to load bridge widget: {widgetLoadError}
+                        </div>
+                    ) : LiFiWidgetComponent ? (
+                        <LiFiWidgetComponent integrator="BlinkMarket" config={widgetConfig} />
+                    ) : (
+                        <div className="rounded-xl p-4 text-sm text-foreground-secondary">
+                            Loading bridge widget...
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
